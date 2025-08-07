@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // Relations
+  createdGroups Group[] @relation("GroupCreator")
+  memberships   Membership[]
+  messages      Message[]
+
+  // Indexes for performance
+  @@index([username])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(100)
+  createdBy String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  serverSeq Int      @unique @default(autoincrement())
+
+  // Relations
+  creator   User     @relation("GroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  messages  Message[]
+  members   Membership[]
+
+  // Indexes for performance and queries
+  @@index([createdBy])
+  @@index([serverSeq])
+  @@index([updatedAt])
+  @@index([createdAt]) // For chronological ordering
+  @@map("groups")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  groupId   String
+  senderId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  serverSeq Int      @unique @default(autoincrement())
+
+  // Relations
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  // Indexes optimized for chat queries
+  @@index([groupId, createdAt(sort: Desc)]) // Most common: recent messages in group
+  @@index([senderId, createdAt(sort: Desc)]) // User's recent messages
+  @@index([serverSeq]) // For sync operations
+  @@index([createdAt(sort: Desc)]) // Global recent messages
+  // Remove redundant unique constraint - id is already unique
+  @@map("messages")
+}
+
+model Membership {
+  userId   String
+  groupId  String
+  joinedAt DateTime  @default(now()) @db.Timestamptz(6)
+  leftAt   DateTime? @db.Timestamptz(6)
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group    Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // Composite primary key
+  @@id([userId, groupId])
+
+  // Indexes optimized for membership queries
+  @@index([groupId, leftAt]) // Active members in group (leftAt IS NULL)
+  @@index([userId, leftAt]) // User's active memberships
+  @@index([joinedAt]) // Recent joins
+  @@index([leftAt]) // Recent leaves
+  @@map("memberships")
+}
