@@ -60,6 +60,8 @@ cd client && npm install && npm run dev
 - Add optimistic UI updates with rollback capability for better perceived performance
 - Introduce message threading and reactions for richer chat functionality
 - Implement user presence indicators and typing status for enhanced UX
+- Implement husky for pre-commit hooks to run tests and linting before commits
+- Implement more tests
 
 ## How It Works
 
@@ -98,7 +100,6 @@ cd server && npm run test:coverage
 - All API endpoints with validation and error handling
 - Complete offline-to-online sync workflows
 - Concurrent user operations and data consistency
-- Edge cases like network failures and database resets
 
 ## Production Notes
 
